@@ -50,6 +50,10 @@ export class Scene {
         }
     }
 
+    async prepareForRender(time: number) {
+        await Promise.all(this.objects.map(obj => obj.prepareForRender(time)));
+    }
+
     render(ctx: CanvasRenderingContext2D, time: number) {
         // Clear
         ctx.fillStyle = this.backgroundColor;

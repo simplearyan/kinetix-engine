@@ -47,6 +47,12 @@ export abstract class KinetixObject implements KinetixObjectProps {
     onAdd(_scene: any) { }
     onRemove(_scene: any) { }
 
+    // Async hook for pre-render logic (e.g. waiting for video seek)
+    // Used primarily during offline export
+    async prepareForRender(time: number): Promise<void> {
+        return;
+    }
+
     // Helper to check hit (default AABB)
     isHit(x: number, y: number): boolean {
         return x >= this.x && x <= this.x + this.width &&

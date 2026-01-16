@@ -482,6 +482,10 @@ export class Engine {
                         // const t1 = performance.now();
 
                         const time = i * dt;
+
+                        // Wait for any async objects (like Video) to be ready
+                        await this.scene.prepareForRender(time);
+
                         this.seek(time); // Sets currentTime and calls render() synchronously
 
                         // Create Bitmap (Efficient snapshot)
