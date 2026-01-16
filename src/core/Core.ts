@@ -1,10 +1,15 @@
 import { Scene } from "../scene/Scene";
-import { Muxer, ArrayBufferTarget } from "webm-muxer";
+import { InteractionManager } from "./InteractionManager";
+import { LayoutManager } from "./LayoutManager";
 
 export class Engine {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     scene: Scene;
+
+    // Managers (Plugins)
+    interaction: InteractionManager;
+    layout: LayoutManager;
 
     // Time
     currentTime: number = 0;
@@ -13,82 +18,10 @@ export class Engine {
     isLooping: boolean = true;
     playbackRate: number = 1;
 
-    resize(width: number, height: number) {
-        if (this.scene.width === 0 || this.scene.height === 0) {
-            this.canvas.width = width;
-            this.canvas.height = height;
-            this.scene.width = width;
-            this.scene.height = height;
-            this.render();
-            // Call resize anyway to set initial aspect?
-            this.onResize?.(width, height);
-            return;
-        }
-
-        const scaleX = width / this.scene.width;
-        const scaleY = height / this.scene.height;
-
-        // Use the smaller scale to ensure obj fits in the new view without cropping/overflowing relatively?
-        // Or actually, we want layout to "stretch" positions, but "scale" sizes uniformly.
-        const sizeScale = Math.min(scaleX, scaleY);
-        // Special case: If mostly just resolution upgrade (both > 1), maybe use max? 
-        // Or just min is safest to avoid cropping.
-
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.scene.width = width;
-        this.scene.height = height;
-
-        // Scale all objects
-        this.scene.objects.forEach(obj => {
-            // Position: Relative to canvas size (Percentage based)
-            obj.x *= scaleX;
-            obj.y *= scaleY;
-
-            // Size: Uniform scaling to maintain aspect
-            obj.width *= sizeScale;
-            obj.height *= sizeScale;
-
-            // Props
-            if ('fontSize' in obj) {
-                (obj as any).fontSize *= sizeScale;
-            }
-            if ('padding' in obj) {
-                (obj as any).padding *= sizeScale;
-            }
-            if ('lineNumberMargin' in obj) {
-                (obj as any).lineNumberMargin *= sizeScale;
-            }
-            if ('barHeight' in obj) {
-                (obj as any).barHeight *= sizeScale;
-            }
-            if ('gap' in obj) {
-                (obj as any).gap *= sizeScale;
-            }
-            if ('radius' in obj) {
-                (obj as any).radius *= sizeScale;
-            }
-            if ('strokeWidth' in obj) {
-                (obj as any).strokeWidth *= sizeScale;
-            }
-        });
-
-        this.render();
-        this.onResize?.(width, height);
-    }
-
-    // Loop
+    // Loop State
     private _rafId: number = 0;
     private _lastFrameTime: number = 0;
 
-    // Interaction State
-    selectedObjectId: string | null = null;
-    private _isDragging = false;
-    private _dragStartX = 0;
-    private _dragStartY = 0;
-    private _initialObjState: { x: number, y: number } | null = null;
-
-    // Event hooks
     // Event hooks
     onTimeUpdate?: (time: number) => void;
     onPlayStateChange?: (isPlaying: boolean) => void;
@@ -96,15 +29,6 @@ export class Engine {
     onObjectChange?: () => void; // Generic update for props
     onResize?: (width: number, height: number) => void;
     onDurationChange?: (duration: number) => void;
-
-    setTotalDuration(duration: number) {
-        this.totalDuration = Math.max(1000, duration); // Minimum 1 second
-        if (this.currentTime > this.totalDuration) {
-            this.currentTime = this.totalDuration;
-            this.onTimeUpdate?.(this.currentTime);
-        }
-        this.onDurationChange?.(this.totalDuration);
-    }
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -117,116 +41,30 @@ export class Engine {
             this.onObjectChange?.(); // Notify listeners (UI)
         };
 
-        this._setupInteraction();
+        // Initialize Managers
+        this.interaction = new InteractionManager(this);
+        this.layout = new LayoutManager(this);
+
         this.render();
     }
 
-    private _setupInteraction() {
-        // Mouse Events
-        this.canvas.addEventListener("mousedown", (e) => {
-            const { x, y } = this._getMousePos(e);
-            this._handleStart(x, y);
-        });
-
-        window.addEventListener("mousemove", (e) => {
-            const { x, y } = this._getMousePos(e);
-            this.scene.mouseX = x;
-            this.scene.mouseY = y;
-
-            if (this._isDragging && this.selectedObjectId) {
-                this._handleMove(x, y);
-            }
-        });
-
-        window.addEventListener("mouseup", () => {
-            this._handleEnd();
-        });
-
-        // Touch Events
-        this.canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault(); // Prevent scrolling
-            const { x, y } = this._getTouchPos(e);
-            this._handleStart(x, y);
-        }, { passive: false });
-
-        window.addEventListener("touchmove", (e) => {
-            if (this._isDragging && this.selectedObjectId) {
-                e.preventDefault(); // Prevent scrolling
-                const { x, y } = this._getTouchPos(e);
-                this._handleMove(x, y);
-            }
-        }, { passive: false });
-
-        window.addEventListener("touchend", () => {
-            this._handleEnd();
-        });
+    // Delegate to LayoutManager
+    resize(width: number, height: number) {
+        this.layout.resize(width, height);
     }
 
-    private _handleStart(x: number, y: number) {
-        // Check Hit (Top-most first)
-        let hitId = null;
-        for (let i = this.scene.objects.length - 1; i >= 0; i--) {
-            const obj = this.scene.objects[i];
-            if (!obj.visible || obj.locked) continue;
-            if (obj.isHit(x, y)) {
-                hitId = obj.id;
-                break;
-            }
+    setTotalDuration(duration: number) {
+        this.totalDuration = Math.max(1000, duration); // Minimum 1 second
+        if (this.currentTime > this.totalDuration) {
+            this.currentTime = this.totalDuration;
+            this.onTimeUpdate?.(this.currentTime);
         }
-
-        this.selectObject(hitId);
-
-        if (hitId) {
-            this._isDragging = true;
-            this._dragStartX = x;
-            this._dragStartY = y;
-            const obj = this.scene.get(hitId);
-            if (obj) this._initialObjState = { x: obj.x, y: obj.y };
-        }
+        this.onDurationChange?.(this.totalDuration);
     }
 
-    private _handleMove(x: number, y: number) {
-        const obj = this.scene.get(this.selectedObjectId!);
-        if (obj && this._initialObjState) {
-            const dx = x - this._dragStartX;
-            const dy = y - this._dragStartY;
-            obj.x = this._initialObjState.x + dx;
-            obj.y = this._initialObjState.y + dy;
-            this.render();
-            this.onObjectChange?.();
-        }
-    }
-
-    private _handleEnd() {
-        this._isDragging = false;
-        this._initialObjState = null;
-    }
-
-    private _getMousePos(e: MouseEvent) {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
-        };
-    }
-
-    private _getTouchPos(e: TouchEvent) {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        const touch = e.touches[0] || e.changedTouches[0];
-        return {
-            x: (touch.clientX - rect.left) * scaleX,
-            y: (touch.clientY - rect.top) * scaleY
-        };
-    }
-
-    selectObject(id: string | null) {
-        this.selectedObjectId = id;
-        this.render(); // Redraw selection box
-        this.onSelectionChange?.(id);
+    // Delegate interaction state to Manager if needed, or expose it
+    get selectedObjectId() {
+        return this.interaction.selectedObjectId;
     }
 
     play() {
@@ -337,7 +175,7 @@ export class Engine {
                             }
                         });
 
-                        await new Promise<void>((resolveW, rejectW) => {
+                        await new Promise<void>((resolveW) => {
                             const initHandler = (e: MessageEvent) => {
                                 if (e.data.type === 'READY') {
                                     worker.removeEventListener('message', initHandler);
@@ -358,7 +196,7 @@ export class Engine {
                         this.play();
 
                         let frameCount = 0;
-                        const expectedFrames = (duration / 1000) * fps;
+                        // const expectedFrames = (duration / 1000) * fps;
 
                         const readLoop = async () => {
                             while (true) {
@@ -507,7 +345,7 @@ export class Engine {
 
             } else {
                 // Offline: Worker-based Frame-by-Frame
-                const startTime = performance.now();
+                // const startTime = performance.now();
                 onLog?.(`[Core] Starting Offline Export...`);
 
                 let cleanup = () => { this.isLooping = wasLooping; };
@@ -595,7 +433,7 @@ export class Engine {
                         }
 
                         // Debug Performance
-                        const t0 = performance.now();
+                        // const t0 = performance.now();
 
                         // Backpressure: Semaphore Wait
                         let waitStart = performance.now();
@@ -617,7 +455,7 @@ export class Engine {
                         // Consume Credit
                         credits--;
 
-                        const t1 = performance.now();
+                        // const t1 = performance.now();
 
                         const time = i * dt;
                         this.seek(time); // Sets currentTime and calls render() synchronously
@@ -628,7 +466,7 @@ export class Engine {
                             resizeWidth: evenWidth,
                             resizeHeight: evenHeight
                         });
-                        const t3 = performance.now();
+                        // const t3 = performance.now();
 
                         // Transfer to worker
                         worker.postMessage({
@@ -694,6 +532,6 @@ export class Engine {
 
     dispose() {
         this.pause();
-        // Cleanup if needed
+        this.interaction.dispose();
     }
 }

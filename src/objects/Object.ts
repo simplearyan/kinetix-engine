@@ -1,5 +1,6 @@
+import type { KinetixObjectProps } from "../types/Interfaces";
 
-export abstract class KinetixObject {
+export abstract class KinetixObject implements KinetixObjectProps {
     id: string;
     name: string;
     visible: boolean = true;
@@ -17,6 +18,17 @@ export abstract class KinetixObject {
     // Selection/Interaction
     locked: boolean = false;
 
+    // Optional Config properties from Styleable
+    fontSize?: number;
+    padding?: number;
+    lineNumberMargin?: number;
+    barHeight?: number;
+    gap?: number;
+    radius?: number;
+    strokeWidth?: number;
+    color?: string;
+    backgroundColor?: string;
+
     // Animation
     animation: {
         type: "none" | "fadeIn" | "slideUp" | "scaleIn" | "typewriter" | "grow";
@@ -32,8 +44,8 @@ export abstract class KinetixObject {
     abstract draw(ctx: CanvasRenderingContext2D, time: number): void;
 
     // Optional lifecycle hooks
-    onAdd(scene: any) { }
-    onRemove(scene: any) { }
+    onAdd(_scene: any) { }
+    onRemove(_scene: any) { }
 
     // Helper to check hit (default AABB)
     isHit(x: number, y: number): boolean {

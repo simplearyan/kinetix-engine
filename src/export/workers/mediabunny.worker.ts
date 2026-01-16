@@ -111,13 +111,14 @@ self.onmessage = async (e) => {
             const codec = config.format === 'webm' ? 'vp9' : 'avc';
 
             // @ts-ignore - Types might be strict about width/height but runtime supports it
+            // @ts-ignore
             source = new VideoSampleSource({
                 width: config.width,
                 height: config.height,
                 frameRate: config.fps,
                 codec: codec,
                 bitrate: config.bitrate || 6_000_000
-            });
+            } as any);
 
             await output.addVideoTrack(source);
             await output.start();
@@ -168,7 +169,7 @@ self.onmessage = async (e) => {
 
                 if (target && target.buffer) {
                     self.postMessage({ type: 'LOG', message: `Finalize: Buffer Ready (${target.buffer.byteLength} bytes). Sending COMPLETE.` });
-                    self.postMessage({ type: 'COMPLETE', data: target.buffer }, [target.buffer]);
+                    (self as any).postMessage({ type: 'COMPLETE', data: target.buffer }, [target.buffer]);
                 } else {
                     throw new Error("Export failed: Buffer empty after finalize.");
                 }
