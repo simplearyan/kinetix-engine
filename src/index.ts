@@ -2,3 +2,7 @@ export { Engine } from "./core/Core";
 export { Scene } from "./scene/Scene";
 export { KinetixObject } from "./objects/Object";
 export { Exporter } from "./export/Export";
+export { PlayerOverlay } from "./ui/PlayerOverlay";
+export { VideoObject } from "./objects/VideoObject";
+export { CanvasControl } from "./ui/CanvasControl";
+export { ExportControl } from "./ui/ExportControl";

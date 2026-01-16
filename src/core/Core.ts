@@ -13,7 +13,7 @@ export class Engine {
 
     // Time
     currentTime: number = 0;
-    totalDuration: number = 5000;
+    totalDuration: number = 30000;
     isPlaying: boolean = false;
     isLooping: boolean = true;
     playbackRate: number = 1;
@@ -141,16 +141,36 @@ export class Engine {
         signal?: AbortSignal,
         engine: 'legacy' | 'mediabunny' = 'legacy',
         format: 'webm' | 'mp4' | 'mov' = 'webm',
-        onLog?: (msg: string) => void
+        onLog?: (msg: string) => void,
+        options?: { width?: number; height?: number } // Resolution support
     ): Promise<Blob> {
         return new Promise(async (resolve, reject) => {
+            // Save state
+            const wasLooping = this.isLooping;
+            const originalWidth = this.canvas.width;
+            const originalHeight = this.canvas.height;
+
+            // Resize if needed
+            if (options?.width && options?.height) {
+                console.log(`[Core] Resizing for export: ${options.width}x${options.height}`);
+                this.resize(options.width, options.height);
+            }
+
             // Force even dimensions for encoder stability
             const evenWidth = this.canvas.width % 2 === 0 ? this.canvas.width : this.canvas.width - 1;
             const evenHeight = this.canvas.height % 2 === 0 ? this.canvas.height : this.canvas.height - 1;
 
-            // Save and disable looping
-            const wasLooping = this.isLooping;
             this.isLooping = false;
+
+            // Restorer helper
+            const restore = () => {
+                this.isLooping = wasLooping;
+                if (options?.width && options?.height) {
+                    this.resize(originalWidth, originalHeight);
+                }
+            };
+
+
 
             if (mode === 'realtime') {
                 try {
@@ -226,6 +246,7 @@ export class Engine {
                                 clearInterval(checkInterval);
                                 this.pause();
                                 worker.terminate();
+                                restore();
                                 reject(new Error("Export cancelled"));
                                 return;
                             }
@@ -258,7 +279,7 @@ export class Engine {
 
                                 try {
                                     const result = await completionPromise;
-                                    this.isLooping = wasLooping;
+                                    restore();
                                     resolve(result);
                                 } catch (e) {
                                     reject(e);
@@ -285,7 +306,8 @@ export class Engine {
 
                         recorder.onerror = (e) => {
                             console.error("MediaRecorder Error:", e);
-                            this.isLooping = wasLooping; // Restore
+                            console.error("MediaRecorder Error:", e);
+                            restore();
                             reject(new Error("MediaRecorder Error: " + e.error.message));
                         };
 
@@ -313,7 +335,9 @@ export class Engine {
                                 clearInterval(checkInterval);
                                 this.pause();
                                 recorder.stop();
-                                this.isLooping = wasLooping; // Restore
+                                this.pause();
+                                recorder.stop();
+                                restore();
                                 reject(new Error("Export cancelled"));
                                 return;
                             }
@@ -329,17 +353,17 @@ export class Engine {
 
                                 try {
                                     const blob = await stopPromise;
-                                    this.isLooping = wasLooping; // Restore
+                                    restore();
                                     resolve(blob);
                                 } catch (e) {
-                                    this.isLooping = wasLooping; // Restore
+                                    restore();
                                     reject(e);
                                 }
                             }
                         }, 100);
                     }
                 } catch (e) {
-                    this.isLooping = wasLooping; // Restore
+                    restore();
                     reject(e);
                 }
 
@@ -348,7 +372,7 @@ export class Engine {
                 // const startTime = performance.now();
                 onLog?.(`[Core] Starting Offline Export...`);
 
-                let cleanup = () => { this.isLooping = wasLooping; };
+                let cleanup = () => { restore(); };
 
                 try {
                     this.pause();
@@ -364,7 +388,7 @@ export class Engine {
 
                     cleanup = () => {
                         worker.terminate();
-                        this.isLooping = wasLooping;
+                        restore();
                     };
 
                     worker.postMessage({
@@ -515,7 +539,7 @@ export class Engine {
                     }
 
                     onLog?.(`[Core] Export Finished. Blob size: ${blob.size}`);
-                    this.isLooping = wasLooping;
+                    restore();
                     resolve(blob);
 
                     // Restore state
