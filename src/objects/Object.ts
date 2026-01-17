@@ -15,6 +15,17 @@ export abstract class KinetixObject implements KinetixObjectProps {
     scaleY: number = 1;
     opacity: number = 1;
 
+    // Hierarchy
+    parent: KinetixObject | null = null;
+
+    getGlobalX(): number {
+        return this.x + (this.parent?.getGlobalX() || 0);
+    }
+
+    getGlobalY(): number {
+        return this.y + (this.parent?.getGlobalY() || 0);
+    }
+
     // Selection/Interaction
     locked: boolean = false;
 

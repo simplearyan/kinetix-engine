@@ -6,3 +6,4 @@ export { PlayerOverlay } from "./ui/PlayerOverlay";
 export { VideoObject } from "./objects/VideoObject";
 export { CanvasControl } from "./ui/CanvasControl";
 export { ExportControl } from "./ui/ExportControl";
+export { FlexContainer } from "./objects/FlexContainer";
