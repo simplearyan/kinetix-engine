@@ -11,8 +11,10 @@ export class LayoutManager {
     resize(width: number, height: number) {
         const scene = this.engine.scene;
         const canvas = this.engine.canvas;
+        const prevW = scene.width;
+        const prevH = scene.height;
 
-        if (scene.width === 0 || scene.height === 0) {
+        if (prevW === 0 || prevH === 0) {
             canvas.width = width;
             canvas.height = height;
             scene.width = width;
@@ -22,37 +24,51 @@ export class LayoutManager {
             return;
         }
 
-        const scaleX = width / scene.width;
-        const scaleY = height / scene.height;
-        const sizeScale = Math.min(scaleX, scaleY);
+        const scaleX = width / prevW;
+        const scaleY = height / prevH;
+        // Used only to calculate sizeScale if we wanted non-uniform scaling,
+        // but for now we rely on strict proportional fit.
 
         canvas.width = width;
         canvas.height = height;
         scene.width = width;
         scene.height = height;
 
+        // Center-Pin Scaling Strategy
+        // 1. Calculate Scale Factor based on "Fit" logic (safe default)
+        // If we want "Cover" for backgrounds, we'd need a specific flag, but for now strict proportional fit is best.
+        // We use the min scale to ensure object fits within new bounds without distortion.
+        const scaleFactor = Math.min(width / prevW, height / prevH);
+
         // Scale all objects
         scene.objects.forEach(obj => {
-            // Position: Relative to canvas size (Percentage based)
-            obj.x *= scaleX;
-            obj.y *= scaleY;
+            // 2. Capture Relative Center (0.5, 0.5 = Center)
+            const centerX = obj.x + obj.width / 2;
+            const centerY = obj.y + obj.height / 2;
+            const percentX = centerX / prevW;
+            const percentY = centerY / prevH;
 
-            // Size: Uniform scaling to maintain aspect
-            obj.width *= sizeScale;
-            obj.height *= sizeScale;
+            // 3. Scale Dimensions & Props
+            obj.width *= scaleFactor;
+            obj.height *= scaleFactor;
 
-
-            // Props - Safe casting using Styleable interface
-            // We iterate known numeric style properties to scale them
             const styleObj = obj as Styleable;
+            if (styleObj.fontSize) styleObj.fontSize *= scaleFactor;
+            if (styleObj.padding) styleObj.padding *= scaleFactor;
+            if (styleObj.lineNumberMargin) styleObj.lineNumberMargin *= scaleFactor;
+            if (styleObj.barHeight) styleObj.barHeight *= scaleFactor;
+            if (styleObj.gap) styleObj.gap *= scaleFactor;
+            if (styleObj.radius) styleObj.radius *= scaleFactor;
+            if (styleObj.strokeWidth) styleObj.strokeWidth *= scaleFactor;
 
-            if (styleObj.fontSize) styleObj.fontSize *= sizeScale;
-            if (styleObj.padding) styleObj.padding *= sizeScale;
-            if (styleObj.lineNumberMargin) styleObj.lineNumberMargin *= sizeScale;
-            if (styleObj.barHeight) styleObj.barHeight *= sizeScale;
-            if (styleObj.gap) styleObj.gap *= sizeScale;
-            if (styleObj.radius) styleObj.radius *= sizeScale;
-            if (styleObj.strokeWidth) styleObj.strokeWidth *= sizeScale;
+            // 4. Reposition based on new Canvas Center
+            // New Center = Percentage * New Dimensions
+            const newCenterX = percentX * width;
+            const newCenterY = percentY * height;
+
+            // 5. Set new Top-Left
+            obj.x = newCenterX - obj.width / 2;
+            obj.y = newCenterY - obj.height / 2;
         });
 
         this.engine.render();

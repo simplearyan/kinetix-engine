@@ -40,6 +40,8 @@ export abstract class KinetixObject implements KinetixObjectProps {
     color?: string;
     backgroundColor?: string;
 
+    // Layout (Center-Pin Scaling is now default, no per-object config needed)
+
     // Animation
     animation: {
         type: "none" | "fadeIn" | "slideUp" | "scaleIn" | "typewriter" | "grow";

@@ -100,7 +100,8 @@ export class RichTextObject extends KinetixObject {
             // For Center, we'd need to know the width of the specific ROW this glyph is on.
             // layoutText returns `row` index. We could pre-calc row widths.
 
-            ctx.font = `${glyph.style.fontStyle} ${glyph.style.fontWeight === 'bold' ? 'bold' : ''} ${this.fontSize}px ${this.fontFamily}`;
+            const emojiFallback = ', "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+            ctx.font = `${glyph.style.fontStyle} ${glyph.style.fontWeight === 'bold' ? 'bold' : ''} ${this.fontSize}px ${this.fontFamily}${emojiFallback}`;
             ctx.fillStyle = glyph.style.fill;
             ctx.fillText(glyph.char, glyph.x, glyph.y + this.fontSize); // FillText is baseline
         });

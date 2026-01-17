@@ -162,7 +162,8 @@ export function layoutText(
             maxLineHeight = Math.max(maxLineHeight, lineHeight);
 
             // Generate Glyphs
-            const chars = word.split('');
+            // Use Array.from to correctly handle surrogate pairs (emojis)
+            const chars = Array.from(word);
             for (const char of chars) {
                 const charWidth = ctx.measureText(char).width;
 
