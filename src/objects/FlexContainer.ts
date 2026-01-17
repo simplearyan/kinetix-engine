@@ -105,10 +105,34 @@ export class FlexContainer extends KinetixObject {
         clone.gap = this.gap;
         clone.padding = this.padding;
         clone.alignItems = this.alignItems;
-        // Deep clone children?
+        // Deep clone children
         this.children.forEach(child => {
             clone.add(child.clone());
         });
         return clone;
+    }
+
+    toJSON() {
+        const base = super.toJSON();
+        base.type = "FlexContainer";
+        base.props = {
+            ...base.props,
+            direction: this.direction,
+            gap: this.gap,
+            alignItems: this.alignItems,
+            padding: this.padding
+        };
+        base.children = this.children.map(c => c.toJSON());
+        return base;
+    }
+
+    getSchema(): import("../types/Interfaces").PropertySchema[] {
+        return [
+            { key: 'direction', label: 'Direction', type: 'select', options: ['row', 'column'] },
+            { key: 'gap', label: 'Gap', type: 'number' },
+            { key: 'padding', label: 'Padding', type: 'number' },
+            { key: 'alignItems', label: 'Align Items', type: 'select', options: ['start', 'center', 'end'] },
+            ...super.getSchema()
+        ];
     }
 }

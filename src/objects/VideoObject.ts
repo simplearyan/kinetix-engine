@@ -106,4 +106,14 @@ export class VideoObject extends KinetixObject {
     onRemove() {
         this.videoElement.remove();
     }
+
+    toJSON() {
+        const base = super.toJSON();
+        base.type = "VideoObject";
+        base.props = {
+            ...base.props,
+            src: this.src
+        };
+        return base;
+    }
 }

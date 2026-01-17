@@ -1,6 +1,7 @@
 import { Scene } from "../scene/Scene";
 import { InteractionManager } from "./InteractionManager";
 import { LayoutManager } from "./LayoutManager";
+import { ProjectManager } from "./ProjectManager";
 
 export class Engine {
     canvas: HTMLCanvasElement;
@@ -10,6 +11,7 @@ export class Engine {
     // Managers (Plugins)
     interaction: InteractionManager;
     layout: LayoutManager;
+    project: ProjectManager;
 
     // Time
     currentTime: number = 0;
@@ -44,6 +46,7 @@ export class Engine {
         // Initialize Managers
         this.interaction = new InteractionManager(this);
         this.layout = new LayoutManager(this);
+        this.project = new ProjectManager(this);
 
         this.render();
     }

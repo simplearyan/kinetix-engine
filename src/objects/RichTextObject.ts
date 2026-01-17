@@ -116,6 +116,35 @@ export class RichTextObject extends KinetixObject {
         clone.fontFamily = this.fontFamily;
         clone.color = this.color;
         clone.maxWidth = this.maxWidth;
+        clone.textAlign = this.textAlign;
+        clone.animation = JSON.parse(JSON.stringify(this.animation));
         return clone;
+    }
+
+    toJSON() {
+        const base = super.toJSON();
+        base.type = "RichTextObject";
+        base.props = {
+            ...base.props,
+            text: this.text,
+            textAlign: this.textAlign,
+            maxWidth: this.maxWidth,
+            lineHeight: this.lineHeight,
+            fontFamily: this.fontFamily,
+            fontWeight: this.fontWeight
+        };
+        return base;
+    }
+
+    getSchema(): import("../types/Interfaces").PropertySchema[] {
+        return [
+            { key: 'text', label: 'Content', type: 'textarea' },
+            { key: 'fontSize', label: 'Font Size', type: 'number' },
+            { key: 'color', label: 'Color', type: 'color' },
+            { key: 'fontFamily', label: 'Font', type: 'text' },
+            { key: 'textAlign', label: 'Align', type: 'select', options: ['left', 'center', 'right'] },
+            { key: 'maxWidth', label: 'Max Width', type: 'number' },
+            ...super.getSchema()
+        ];
     }
 }

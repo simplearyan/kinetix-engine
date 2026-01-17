@@ -29,3 +29,25 @@ export interface KinetixObjectProps extends Transformable, Styleable {
     name: string;
     locked: boolean;
 }
+
+export interface SerializedObject {
+    type: string;
+    id: string;
+    name: string;
+    props: any;
+    children?: SerializedObject[];
+}
+
+export interface ISerializable {
+    toJSON(): SerializedObject;
+}
+
+export interface PropertySchema {
+    key: string; // "fontSize" or "animation.type"
+    label: string;
+    type: 'text' | 'number' | 'color' | 'boolean' | 'select' | 'textarea';
+    min?: number;
+    max?: number;
+    step?: number;
+    options?: { label: string; value: any }[] | string[];
+}

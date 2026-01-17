@@ -45,7 +45,8 @@ export abstract class KinetixObject implements KinetixObjectProps {
         type: "none" | "fadeIn" | "slideUp" | "scaleIn" | "typewriter" | "grow";
         duration: number; // ms
         delay: number; // ms
-    } = { type: "none", duration: 1000, delay: 0 };
+        easing?: string;
+    } = { type: "none", duration: 1000, delay: 0, easing: 'linear' };
 
     constructor(id: string, name: string) {
         this.id = id;
@@ -72,4 +73,53 @@ export abstract class KinetixObject implements KinetixObjectProps {
 
     // Clone method for duplication
     abstract clone(): KinetixObject;
+
+    toJSON(): import("../types/Interfaces").SerializedObject {
+        return {
+            type: this.constructor.name, // Fallback if no specific type field
+            id: this.id,
+            name: this.name,
+            props: {
+                x: this.x,
+                y: this.y,
+                width: this.width,
+                height: this.height,
+                rotation: this.rotation,
+                scaleX: this.scaleX,
+                scaleY: this.scaleY,
+                opacity: this.opacity,
+                visible: this.visible,
+                locked: this.locked,
+                // Styles
+                fontSize: this.fontSize,
+                color: this.color,
+                backgroundColor: this.backgroundColor,
+                padding: this.padding,
+                // Animation
+                animation: this.animation
+            }
+        };
+    }
+
+    getSchema(): import("../types/Interfaces").PropertySchema[] {
+        return [
+            // Transform
+            { key: 'x', label: 'X', type: 'number' },
+            { key: 'y', label: 'Y', type: 'number' },
+            { key: 'width', label: 'Width', type: 'number' },
+            { key: 'height', label: 'Height', type: 'number' },
+            { key: 'rotation', label: 'Rotation', type: 'number' },
+            { key: 'opacity', label: 'Opacity', type: 'number', min: 0, max: 1, step: 0.1 },
+
+            // Animation
+            {
+                key: 'animation.type',
+                label: 'Animation',
+                type: 'select',
+                options: ['none', 'fadeIn', 'slideUp', 'scaleIn', 'typewriter', 'grow']
+            },
+            { key: 'animation.duration', label: 'Duration (ms)', type: 'number', step: 100 },
+            { key: 'animation.delay', label: 'Delay (ms)', type: 'number', step: 100 }
+        ];
+    }
 }
