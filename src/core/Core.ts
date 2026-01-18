@@ -3,6 +3,7 @@ import { InteractionManager } from "./InteractionManager";
 import { LayoutManager } from "./LayoutManager";
 import { ProjectManager } from "./ProjectManager";
 import type { EngineEvents } from "../types/Interfaces";
+import { EngineStore } from "./Store";
 
 export class Engine {
     canvas: HTMLCanvasElement;
@@ -13,6 +14,9 @@ export class Engine {
     interaction: InteractionManager;
     layout: LayoutManager;
     project: ProjectManager;
+    store: EngineStore;
+
+    // Time
 
     // Time
     currentTime: number = 0;
@@ -33,6 +37,7 @@ export class Engine {
     // Centralized time setter (internal use)
     private _setTime(time: number) {
         this.currentTime = this._clampTime(time);
+        this.store.currentTime.set(this.currentTime);
     }
 
     // Event hooks
@@ -88,6 +93,11 @@ export class Engine {
         this.interaction = new InteractionManager(this);
         this.layout = new LayoutManager(this);
         this.project = new ProjectManager(this);
+        this.store = new EngineStore();
+
+        // Sync Initial State
+        this.store.width.set(this.canvas.width);
+        this.store.height.set(this.canvas.height);
 
         this.render();
     }
@@ -95,11 +105,14 @@ export class Engine {
     // Delegate to LayoutManager
     resize(width: number, height: number) {
         this.layout.resize(width, height);
+        this.store.width.set(width);
+        this.store.height.set(height);
         this.emit('resize', width, height);
     }
 
     setTotalDuration(duration: number) {
         this.totalDuration = Math.max(1000, duration); // Minimum 1 second
+        this.store.totalDuration.set(this.totalDuration);
         if (this.currentTime > this.totalDuration) {
             this._setTime(this.totalDuration);
             // _setTime handles timeUpdate, but we need durationChange
@@ -114,6 +127,7 @@ export class Engine {
 
     selectObject(id: string | null) {
         this.interaction.selectObject(id);
+        this.store.selectedObjectId.set(id);
         this.render(); // Redraw selection box
         this.emit('selectionChange', id);
     }
@@ -126,6 +140,7 @@ export class Engine {
         }
 
         this.isPlaying = true;
+        this.store.isPlaying.set(true);
         this._lastFrameTime = performance.now();
         this._rafId = requestAnimationFrame(this._loop);
         this.emit('playStateChange', true);
@@ -134,6 +149,7 @@ export class Engine {
     pause() {
         if (!this.isPlaying) return;
         this.isPlaying = false;
+        this.store.isPlaying.set(false);
         cancelAnimationFrame(this._rafId);
         this.emit('playStateChange', false);
     }
