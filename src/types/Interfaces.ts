@@ -42,12 +42,23 @@ export interface ISerializable {
     toJSON(): SerializedObject;
 }
 
-export interface PropertySchema {
-    key: string; // "fontSize" or "animation.type"
+export interface PropertySchema<T = any> {
+    key: (keyof T & string) | (string & {}); // Preserves autocomplete while allowing paths like 'animation.type'
     label: string;
     type: 'text' | 'number' | 'color' | 'boolean' | 'select' | 'textarea';
     min?: number;
     max?: number;
     step?: number;
     options?: { label: string; value: any }[] | string[];
+}
+
+export interface EngineEvents {
+    'timeUpdate': (time: number) => void;
+    'playStateChange': (isPlaying: boolean) => void;
+    'selectionChange': (id: string | null) => void;
+    'objectChange': () => void;
+    'resize': (width: number, height: number) => void;
+    'durationChange': (duration: number) => void;
+    // Fallback for custom events
+    [key: string]: any;
 }

@@ -2,6 +2,7 @@ import { Scene } from "../scene/Scene";
 import { InteractionManager } from "./InteractionManager";
 import { LayoutManager } from "./LayoutManager";
 import { ProjectManager } from "./ProjectManager";
+import type { EngineEvents } from "../types/Interfaces";
 
 export class Engine {
     canvas: HTMLCanvasElement;
@@ -35,12 +36,42 @@ export class Engine {
     }
 
     // Event hooks
-    onTimeUpdate?: (time: number) => void;
-    onPlayStateChange?: (isPlaying: boolean) => void;
-    onSelectionChange?: (id: string | null) => void;
-    onObjectChange?: () => void; // Generic update for props
-    onResize?: (width: number, height: number) => void;
-    onDurationChange?: (duration: number) => void;
+    // Event hooks (Legacy Properties - Kept for backward compat, but strictly typed)
+    onTimeUpdate?: EngineEvents['timeUpdate'];
+    onPlayStateChange?: EngineEvents['playStateChange'];
+    onSelectionChange?: EngineEvents['selectionChange'];
+    onObjectChange?: EngineEvents['objectChange'];
+    onResize?: EngineEvents['resize'];
+    onDurationChange?: EngineEvents['durationChange'];
+
+    // New Event System
+    private _listeners: { [K in keyof EngineEvents]?: EngineEvents[K][] } = {};
+
+    on<K extends keyof EngineEvents>(event: K, cb: EngineEvents[K]) {
+        if (!this._listeners[event]) this._listeners[event] = [];
+        this._listeners[event]!.push(cb);
+        return () => this.off(event, cb);
+    }
+
+    off<K extends keyof EngineEvents>(event: K, cb: EngineEvents[K]) {
+        if (!this._listeners[event]) return;
+        this._listeners[event] = this._listeners[event]!.filter(l => l !== cb);
+    }
+
+    public emit<K extends keyof EngineEvents>(event: K, ...args: Parameters<EngineEvents[K]>) {
+        // 1. Call Listeners
+        if (this._listeners[event]) {
+            this._listeners[event]!.forEach(cb => (cb as any)(...args));
+        }
+
+        // 2. Call Legacy Property (Explicit casting to avoid tuple errors)
+        if (event === 'timeUpdate') this.onTimeUpdate?.(args[0] as number);
+        if (event === 'playStateChange') this.onPlayStateChange?.(args[0] as boolean);
+        if (event === 'selectionChange') this.onSelectionChange?.(args[0] as string | null);
+        if (event === 'objectChange') this.onObjectChange?.();
+        if (event === 'resize') this.onResize?.(args[0] as number, args[1] as number);
+        if (event === 'durationChange') this.onDurationChange?.(args[0] as number);
+    }
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -50,7 +81,7 @@ export class Engine {
         this.scene = new Scene();
         this.scene.onUpdate = () => {
             this.render(); // Always re-render on visual change
-            this.onObjectChange?.(); // Notify listeners (UI)
+            this.emit('objectChange'); // Notify listeners (UI)
         };
 
         // Initialize Managers
@@ -64,20 +95,27 @@ export class Engine {
     // Delegate to LayoutManager
     resize(width: number, height: number) {
         this.layout.resize(width, height);
+        this.emit('resize', width, height);
     }
 
     setTotalDuration(duration: number) {
         this.totalDuration = Math.max(1000, duration); // Minimum 1 second
         if (this.currentTime > this.totalDuration) {
             this._setTime(this.totalDuration);
-            this.onTimeUpdate?.(this.currentTime);
+            // _setTime handles timeUpdate, but we need durationChange
         }
-        this.onDurationChange?.(this.totalDuration);
+        this.emit('durationChange', this.totalDuration);
     }
 
     // Delegate interaction state to Manager if needed, or expose it
     get selectedObjectId() {
         return this.interaction.selectedObjectId;
+    }
+
+    selectObject(id: string | null) {
+        this.interaction.selectObject(id);
+        this.render(); // Redraw selection box
+        this.emit('selectionChange', id);
     }
 
     play() {
@@ -90,20 +128,24 @@ export class Engine {
         this.isPlaying = true;
         this._lastFrameTime = performance.now();
         this._rafId = requestAnimationFrame(this._loop);
-        this.onPlayStateChange?.(true);
+        this.emit('playStateChange', true);
     }
 
     pause() {
         if (!this.isPlaying) return;
         this.isPlaying = false;
         cancelAnimationFrame(this._rafId);
-        this.onPlayStateChange?.(false);
+        this.emit('playStateChange', false);
     }
 
     seek(time: number) {
         this._setTime(time);
         this.render();
-        this.onTimeUpdate?.(this.currentTime);
+        // Time update handled in _setTime? No, _setTime is internal.
+        // Let's add emit to _setTime or call it here.
+        // _setTime is used in loop where we emit.
+        // Let's call emit here explicitly.
+        this.emit('timeUpdate', this.currentTime);
     }
 
     private _loop = (now: number) => {
@@ -126,7 +168,7 @@ export class Engine {
 
         this._setTime(nextTime);
         this.render();
-        this.onTimeUpdate?.(this.currentTime);
+        this.emit('timeUpdate', this.currentTime);
 
         this._rafId = requestAnimationFrame(this._loop);
     }
@@ -146,6 +188,8 @@ export class Engine {
             }
         }
     }
+
+
 
     async exportVideo(
         duration: number,

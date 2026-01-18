@@ -1,5 +1,6 @@
 import { KinetixObject } from "./Object";
 import { parseMarkdown, layoutText, TextLayout } from "../utils/TextEngine";
+import type { PropertySchema } from "../types/Interfaces";
 
 export type TextAnimationMock = "none" | "typewriter" | "fadeIn" | "wordSlide";
 
@@ -165,7 +166,7 @@ export class RichTextObject extends KinetixObject {
         return base;
     }
 
-    getSchema(): import("../types/Interfaces").PropertySchema[] {
+    getSchema(): PropertySchema<RichTextObject>[] {
         return [
             { key: 'text', label: 'Content', type: 'textarea' },
             { key: 'fontSize', label: 'Font Size', type: 'number' },

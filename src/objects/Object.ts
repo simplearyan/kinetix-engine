@@ -1,4 +1,4 @@
-import type { KinetixObjectProps } from "../types/Interfaces";
+import type { KinetixObjectProps, PropertySchema } from "../types/Interfaces";
 import type { Scene } from "../scene/Scene";
 
 export abstract class KinetixObject implements KinetixObjectProps {
@@ -72,7 +72,7 @@ export abstract class KinetixObject implements KinetixObjectProps {
 
     // Async hook for pre-render logic (e.g. waiting for video seek)
     // Used primarily during offline export
-    async prepareForRender(time: number): Promise<void> {
+    async prepareForRender(_time: number): Promise<void> {
         return;
     }
 
@@ -112,7 +112,7 @@ export abstract class KinetixObject implements KinetixObjectProps {
         };
     }
 
-    getSchema(): import("../types/Interfaces").PropertySchema[] {
+    getSchema(): PropertySchema<KinetixObjectProps>[] {
         return [
             // Transform
             { key: 'x', label: 'X', type: 'number' },

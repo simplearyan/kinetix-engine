@@ -39,7 +39,7 @@ export class InteractionManager {
     selectObject(id: string | null) {
         this.selectedObjectId = id;
         this.engine.render(); // Redraw selection box
-        this.engine.onSelectionChange?.(id);
+        this.engine.emit('selectionChange', id);
     }
 
     private _updateMousePos(clientX: number, clientY: number) {
@@ -122,7 +122,7 @@ export class InteractionManager {
             obj.x = this._initialObjState.x + dx;
             obj.y = this._initialObjState.y + dy;
             this.engine.render();
-            this.engine.onObjectChange?.();
+            this.engine.emit('objectChange');
         }
     }
 
