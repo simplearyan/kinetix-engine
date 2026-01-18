@@ -62,7 +62,7 @@ If you are building a commercial product with Kinetix, please consider sponsorin
 
 Kinetix is possible thanks to these amazing open-source projects:
 
-- **[webm-muxer](https://github.com/Vanilagy/webm-muxer)**: Pure C++/Wasm implementation of WebM muxing.
+
 - **[mediabunny](https://github.com/simplearyan/mediabunny)**: Frame-perfect video encoding and resource management.
 
 ## License

@@ -2,14 +2,36 @@ import { Engine } from "../core/Engine";
 import { KinetixObject } from "../objects/Object";
 import { PropertySchema } from "../types/Interfaces";
 
+export interface InspectorStyleConfig {
+    containerClass?: string;
+    headerClass?: string;
+    fieldWrapperClass?: string;
+    labelClass?: string;
+    inputClass?: string;
+    selectClass?: string;
+    checkboxClass?: string;
+}
+
+const DEFAULT_STYLE: InspectorStyleConfig = {
+    containerClass: "p-4 space-y-4 overflow-y-auto h-full scrollbar-thin",
+    headerClass: "font-bold text-white text-sm mb-2 border-b border-gray-700 pb-2",
+    fieldWrapperClass: "flex flex-col gap-1",
+    labelClass: "text-[10px] text-gray-400 uppercase tracking-wide",
+    inputClass: "bg-[#1e1e1e] text-white text-xs rounded p-1.5 border border-gray-700 outline-none focus:border-blue-500 font-mono",
+    selectClass: "bg-[#1e1e1e] text-white text-xs rounded p-1.5 border border-gray-700 outline-none focus:border-blue-500",
+    checkboxClass: "cursor-pointer",
+};
+
 export class InspectorPanel {
     container: HTMLElement;
     engine: Engine;
+    config: InspectorStyleConfig;
     private _currentObj: KinetixObject | null = null;
 
-    constructor(engine: Engine, container: HTMLElement) {
+    constructor(engine: Engine, container: HTMLElement, config: InspectorStyleConfig = {}) {
         this.engine = engine;
         this.container = container;
+        this.config = { ...DEFAULT_STYLE, ...config };
         this.bindEvents();
         this.renderEmpty();
     }
@@ -27,15 +49,12 @@ export class InspectorPanel {
             }
             this.renderEmpty();
         };
-
-        // Listen to object changes to update UI if needed?
-        // Ideally two-way binding, but for now UI drives Object.
     }
 
     renderEmpty() {
         this.container.innerHTML = `
-            <div class="h-full flex items-center justify-center text-gray-500 text-xs">
-                Select an object to edit
+            <div class="h-full flex items-center justify-center text-gray-500 text-xs text-center p-4">
+                Select an object to edit properties
             </div>
         `;
         this._currentObj = null;
@@ -46,9 +65,9 @@ export class InspectorPanel {
         const schema = obj.getSchema();
 
         this.container.innerHTML = `
-            <div class="p-4 space-y-4 overflow-y-auto h-full scrollbar-thin">
-                <h3 class="font-bold text-white text-sm mb-2 border-b border-gray-700 pb-2">
-                    ${obj.name} <span class="text-xs text-gray-500 font-normal">(${obj.constructor.name})</span>
+            <div class="${this.config.containerClass}">
+                <h3 class="${this.config.headerClass}">
+                    ${obj.name} <span class="text-xs opacity-50 font-normal">(${obj.constructor.name})</span>
                 </h3>
                 <div class="space-y-3" id="kp-inspector-fields">
                     <!-- Fields injected here -->
@@ -64,12 +83,18 @@ export class InspectorPanel {
         });
     }
 
+    refresh() {
+        if (this._currentObj) {
+            this.renderObject(this._currentObj);
+        }
+    }
+
     createField(item: PropertySchema, obj: any): HTMLElement {
         const wrapper = document.createElement("div");
-        wrapper.className = "flex flex-col gap-1";
+        wrapper.className = this.config.fieldWrapperClass || "";
 
         const label = document.createElement("label");
-        label.className = "text-[10px] text-gray-400 uppercase tracking-wide";
+        label.className = this.config.labelClass || "";
         label.innerText = item.label;
         wrapper.appendChild(label);
 
@@ -98,11 +123,9 @@ export class InspectorPanel {
             // Auto-convert CSV string to array
             if (Array.isArray(currentVal) && typeof val === 'string') {
                 const arr = val.split(',').map(s => s.trim());
-                // Simple heuristic: if original array had numbers, preserve numbers
                 if (currentVal.length > 0 && typeof currentVal[0] === 'number') {
                     val = arr.map(n => parseFloat(n) || 0);
                 } else if (currentVal.length === 0 && arr.length > 0 && !isNaN(parseFloat(arr[0]))) {
-                    // Empty array, guess based on input
                     val = arr.map(n => parseFloat(n));
                 } else {
                     val = arr;
@@ -117,7 +140,7 @@ export class InspectorPanel {
 
         if (item.type === 'select') {
             const select = document.createElement("select");
-            select.className = "bg-[#1e1e1e] text-white text-xs rounded p-1.5 border border-gray-700 outline-none focus:border-blue-500";
+            select.className = this.config.selectClass || "";
 
             (item.options || []).forEach((opt: any) => {
                 const option = document.createElement("option");
@@ -135,24 +158,43 @@ export class InspectorPanel {
         } else if (item.type === 'boolean') {
             const toggle = document.createElement("input");
             toggle.type = "checkbox";
+            toggle.className = this.config.checkboxClass || "";
             toggle.checked = !!value;
             toggle.addEventListener("change", () => setValue(toggle.checked));
             wrapper.appendChild(toggle);
 
         } else if (item.type === 'textarea' || (item.type === 'text' && Array.isArray(value))) {
             const input = document.createElement("textarea");
-            input.className = "bg-[#1e1e1e] text-white text-xs rounded p-2 border border-gray-700 outline-none focus:border-blue-500 min-h-[60px] font-mono";
+            input.className = `${this.config.inputClass} min-h-[60px]`;
             input.value = value || "";
             input.addEventListener("input", () => setValue(input.value));
             wrapper.appendChild(input);
 
         } else if (item.type === 'color') {
+            const container = document.createElement("div");
+            container.className = "flex items-center gap-2";
+
             const input = document.createElement("input");
             input.type = "color";
-            input.className = "w-full h-8 cursor-pointer rounded bg-transparent p-0 border-0";
+            input.className = "w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent";
             input.value = value || "#ffffff";
-            input.addEventListener("input", () => setValue(input.value));
-            wrapper.appendChild(input);
+            input.addEventListener("input", () => {
+                setValue(input.value);
+                textDisplay.value = input.value;
+            });
+
+            const textDisplay = document.createElement("input");
+            textDisplay.type = "text";
+            textDisplay.className = this.config.inputClass || "";
+            textDisplay.value = value || "#ffffff";
+            textDisplay.addEventListener("change", () => {
+                setValue(textDisplay.value);
+                input.value = textDisplay.value;
+            });
+
+            container.appendChild(input);
+            container.appendChild(textDisplay);
+            wrapper.appendChild(container);
 
         } else {
             // Text / Number
@@ -162,7 +204,7 @@ export class InspectorPanel {
             if (item.max !== undefined) input.max = String(item.max);
             if (item.step !== undefined) input.step = String(item.step);
 
-            input.className = "bg-[#1e1e1e] text-white text-xs rounded p-1.5 border border-gray-700 outline-none focus:border-blue-500 font-mono";
+            input.className = this.config.inputClass || "";
             input.value = value?.toString() || "";
 
             input.addEventListener("input", () => {
