@@ -29,6 +29,10 @@ export class Engine {
     private _rafId: number = 0;
     private _lastFrameTime: number = 0;
 
+    // Render State
+    private _isDirty: boolean = false;
+    private _renderPending: boolean = false;
+
     // Helper to clamp time
     private _clampTime(time: number): number {
         return Math.max(0, Math.min(time, this.totalDuration));
@@ -38,6 +42,7 @@ export class Engine {
     private _setTime(time: number) {
         this.currentTime = this._clampTime(time);
         this.store.currentTime.set(this.currentTime);
+        this._isDirty = true;
     }
 
     // Event hooks
@@ -85,7 +90,7 @@ export class Engine {
         this.ctx = ctx;
         this.scene = new Scene();
         this.scene.onUpdate = () => {
-            this.render(); // Always re-render on visual change
+            this.invalidate(); // Request render on next frame
             this.emit('objectChange'); // Notify listeners (UI)
         };
 
@@ -99,7 +104,7 @@ export class Engine {
         this.store.width.set(this.canvas.width);
         this.store.height.set(this.canvas.height);
 
-        this.render();
+        this.invalidate();
     }
 
     // Delegate to LayoutManager
@@ -107,6 +112,7 @@ export class Engine {
         this.layout.resize(width, height);
         this.store.width.set(width);
         this.store.height.set(height);
+        this.invalidate();
         this.emit('resize', width, height);
     }
 
@@ -128,7 +134,7 @@ export class Engine {
     selectObject(id: string | null) {
         this.interaction.selectObject(id);
         this.store.selectedObjectId.set(id);
-        this.render(); // Redraw selection box
+        this.invalidate(); // Redraw selection box
         this.emit('selectionChange', id);
     }
 
@@ -156,7 +162,7 @@ export class Engine {
 
     seek(time: number) {
         this._setTime(time);
-        this.render();
+        this.renderImmediate(); // Seek is usually expected provided immediate visual feedback
         // Time update handled in _setTime? No, _setTime is internal.
         // Let's add emit to _setTime or call it here.
         // _setTime is used in loop where we emit.
@@ -181,15 +187,29 @@ export class Engine {
             }
         }
 
-
         this._setTime(nextTime);
-        this.render();
+        this.renderImmediate(); // Force render in loop
         this.emit('timeUpdate', this.currentTime);
 
         this._rafId = requestAnimationFrame(this._loop);
     }
 
-    render() {
+    // Public API: Schedules a render
+    invalidate() {
+        this._isDirty = true;
+        if (!this._renderPending) {
+            this._renderPending = true;
+            requestAnimationFrame(() => {
+                this.renderImmediate();
+                this._renderPending = false;
+            });
+        }
+    }
+
+    // Synchronous Render
+    renderImmediate(force: boolean = false) {
+        if (!this._isDirty && !force && !this.isPlaying) return; // Skip if clean (unless forced or playing)
+
         this.scene.render(this.ctx, this.currentTime);
 
         // Draw Selection Overlay
@@ -203,6 +223,13 @@ export class Engine {
                 this.ctx.restore();
             }
         }
+
+        this._isDirty = false;
+    }
+
+    // Legacy/Alias for compat
+    render() {
+        this.invalidate();
     }
 
 
@@ -622,7 +649,7 @@ export class Engine {
 
                     // Restore state
                     this._setTime(0);
-                    this.render();
+                    this.renderImmediate();
 
                 } catch (e: any) {
                     cleanup();

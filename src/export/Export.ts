@@ -3,7 +3,7 @@ import { Engine } from "../core/Core";
 export class Exporter {
     static async exportImage(engine: Engine, format: "png" | "svg"): Promise<void> {
         // Force render
-        engine.render();
+        engine.renderImmediate(true);
 
         if (format === "png") {
             const dataUrl = engine.canvas.toDataURL("image/png");
