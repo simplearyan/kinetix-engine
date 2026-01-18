@@ -3,7 +3,8 @@ import { KinetixObject } from "./Object";
 export class VideoObject extends KinetixObject {
     videoElement: HTMLVideoElement;
     src: string;
-    isLoaded: boolean = false;
+    isLoaded: boolean = false; // Legacy flag, try to deprecate later
+    private _loadPromise: Promise<void> | null = null;
 
     constructor(id: string, src: string) {
         super(id, "Video");
@@ -25,9 +26,47 @@ export class VideoObject extends KinetixObject {
         });
 
         // Error handling
+        // Error handling
         this.videoElement.addEventListener("error", (e) => {
             console.error("Video Error:", this.videoElement.error);
+            this.status = 'error';
         });
+
+        // Initialize Loading
+        this.status = 'loading';
+        this.load();
+    }
+
+    async load(): Promise<void> {
+        if (this._loadPromise) return this._loadPromise;
+
+        this._loadPromise = new Promise((resolve, reject) => {
+            if (this.videoElement.readyState >= 1) { // HAVE_METADATA
+                this.status = 'ready';
+                this.isLoaded = true;
+                resolve();
+                return;
+            }
+
+            const loadHandler = () => {
+                this.status = 'ready';
+                this.isLoaded = true;
+                this.width = this.videoElement.videoWidth;
+                this.height = this.videoElement.videoHeight;
+                resolve();
+            };
+
+            const errorHandler = () => {
+                this.status = 'error';
+                // Don't reject, just resolve so Promise.all doesn't fail entire scene load
+                resolve();
+            };
+
+            this.videoElement.addEventListener('loadedmetadata', loadHandler, { once: true });
+            this.videoElement.addEventListener('error', errorHandler, { once: true });
+        });
+
+        return this._loadPromise;
     }
 
     // Critical for Offline Export: Wait for video to seek
@@ -61,7 +100,27 @@ export class VideoObject extends KinetixObject {
     }
 
     draw(ctx: CanvasRenderingContext2D, time: number): void {
-        if (!this.isLoaded) return;
+        if (this.status === 'error') {
+            // Draw Placeholder
+            ctx.save();
+            ctx.fillStyle = '#333';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.strokeStyle = '#ef4444'; // Red-500
+            ctx.lineWidth = 2;
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+
+            // Draw X
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x + this.width, this.y + this.height);
+            ctx.moveTo(this.x + this.width, this.y);
+            ctx.lineTo(this.x, this.y + this.height);
+            ctx.stroke();
+            ctx.restore();
+            return;
+        }
+
+        if (this.status !== 'ready' && !this.isLoaded) return;
 
         const targetTime = time / 1000;
 

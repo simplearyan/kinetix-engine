@@ -24,6 +24,16 @@ export class Engine {
     private _rafId: number = 0;
     private _lastFrameTime: number = 0;
 
+    // Helper to clamp time
+    private _clampTime(time: number): number {
+        return Math.max(0, Math.min(time, this.totalDuration));
+    }
+
+    // Centralized time setter (internal use)
+    private _setTime(time: number) {
+        this.currentTime = this._clampTime(time);
+    }
+
     // Event hooks
     onTimeUpdate?: (time: number) => void;
     onPlayStateChange?: (isPlaying: boolean) => void;
@@ -59,7 +69,7 @@ export class Engine {
     setTotalDuration(duration: number) {
         this.totalDuration = Math.max(1000, duration); // Minimum 1 second
         if (this.currentTime > this.totalDuration) {
-            this.currentTime = this.totalDuration;
+            this._setTime(this.totalDuration);
             this.onTimeUpdate?.(this.currentTime);
         }
         this.onDurationChange?.(this.totalDuration);
@@ -74,7 +84,7 @@ export class Engine {
         if (this.isPlaying) return;
 
         if (this.currentTime >= this.totalDuration) {
-            this.currentTime = 0;
+            this._setTime(0);
         }
 
         this.isPlaying = true;
@@ -91,7 +101,7 @@ export class Engine {
     }
 
     seek(time: number) {
-        this.currentTime = Math.max(0, Math.min(time, this.totalDuration));
+        this._setTime(time);
         this.render();
         this.onTimeUpdate?.(this.currentTime);
     }
@@ -113,7 +123,8 @@ export class Engine {
             }
         }
 
-        this.currentTime = nextTime;
+
+        this._setTime(nextTime);
         this.render();
         this.onTimeUpdate?.(this.currentTime);
 
@@ -215,7 +226,7 @@ export class Engine {
                         const reader = processor.readable.getReader();
 
                         // Start Playback
-                        this.currentTime = 0;
+                        this._setTime(0);
                         this.play();
 
                         let frameCount = 0;
@@ -330,7 +341,7 @@ export class Engine {
                         recorder.start(); // Standard recording (no timeslice)
 
                         // Realtime: Just play
-                        this.currentTime = 0;
+                        this._setTime(0);
                         this.play();
 
                         const checkInterval = setInterval(async () => {
@@ -550,7 +561,7 @@ export class Engine {
                     resolve(blob);
 
                     // Restore state
-                    this.currentTime = 0;
+                    this._setTime(0);
                     this.render();
 
                 } catch (e: any) {
