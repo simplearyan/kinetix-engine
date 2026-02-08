@@ -24,8 +24,8 @@ export class LayoutManager {
             return;
         }
 
-        const scaleX = width / prevW;
-        const scaleY = height / prevH;
+        // const scaleX = width / prevW;
+        // const scaleY = height / prevH;
         // Used only to calculate sizeScale if we wanted non-uniform scaling,
         // but for now we rely on strict proportional fit.
 

@@ -1,4 +1,4 @@
-import { Engine } from "../core/Engine";
+import { Engine } from "../core/Core";
 
 export class CanvasControl {
     container: HTMLElement;

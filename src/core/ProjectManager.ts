@@ -1,5 +1,5 @@
-import type { Engine } from "./Engine";
-import type { SerializedObject, KinetixObjectProps } from "../types/Interfaces";
+import type { Engine } from "./Core";
+import type { SerializedObject } from "../types/Interfaces";
 import { RichTextObject } from "../objects/RichTextObject";
 import { VideoObject } from "../objects/VideoObject";
 import { FlexContainer } from "../objects/FlexContainer";

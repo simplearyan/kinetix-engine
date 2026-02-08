@@ -10,3 +10,4 @@ export { FlexContainer } from "./objects/FlexContainer";
 export { RichTextObject } from "./objects/RichTextObject";
 export { ChartObject } from "./objects/ChartObject";
 export { InspectorPanel } from "./ui/InspectorPanel";
+export * from "./types/Interfaces";

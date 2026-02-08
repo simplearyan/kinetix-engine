@@ -1,5 +1,5 @@
 {
-    "name": "@kinetix/core",
+    "name": "@simplearyan/kenichi-core",
     "version": "1.0.0-alpha.1",
     "description": "High-performance, framework-agnostic video engine for the web.",
     "type": "module",

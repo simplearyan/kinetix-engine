@@ -1,4 +1,4 @@
-# Kinetix Core
+# Kenichi Core
 
 **The High-Performance, Framework-Agnostic Video Engine for the Web.**
 

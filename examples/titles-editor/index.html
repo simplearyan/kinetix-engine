@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenichi Core - Titles Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        app: {
+                            bg: '#0f172a',
+                            surface: '#1e293b',
+                            'surface-hover': '#334155',
+                            border: '#334155'
+                        },
+                        primary: {
+                            DEFAULT: '#6366f1',
+                            light: '#818cf8',
+                            hover: '#4f46e5',
+                            subtle: '#a5b4fc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-app-bg text-white font-sans">
+    
+    <div class="h-full w-full flex flex-col md:flex-row relative">
+        <!-- 1. LEFT PANEL: CANVAS -->
+        <div class="flex-1 flex flex-col relative order-1 md:order-1 h-[55vh] md:h-full">
+            <!-- Header -->
+            <div class="h-14 border-b border-app-border flex items-center justify-between px-4 shrink-0 bg-app-surface z-20">
+                <div class="flex items-center gap-4">
+                    <span class="font-bold text-lg bg-gradient-to-r from-primary-light to-primary-subtle text-transparent bg-clip-text">Kenichi Titles</span>
+                    <a href="../" class="text-xs text-gray-400 hover:text-white transition">← Back</a>
+                    
+                    <!-- Debug Toggle -->
+                    <button id="btn-debug-toggle" class="p-2 text-gray-400 hover:text-white transition-colors" title="Toggle Debug Console">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"></path><path d="M14.12 3.88 16 2"></path><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"></path><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"></path><path d="M12 20v-9"></path><path d="M6.53 9C4.6 8.8 3 7.1 3 5"></path><path d="M6 13H2"></path><path d="M3 21c0-2.1 1.7-3.9 3.8-4"></path><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"></path><path d="M22 13h-4"></path><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"></path></svg>
+                    </button>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="btn-export" class="bg-primary hover:bg-primary-hover text-white px-4 py-1.5 rounded-full text-sm font-medium transition-all">Export MP4</button>
+                </div>
+            </div>
+
+            <!-- Canvas Workspace -->
+            <div class="flex-1 bg-app-bg flex items-center justify-center p-4 relative overflow-hidden">
+                <!-- Canvas Container -->
+                <div id="canvas-container" class="relative group shadow-2xl shadow-black/50 h-full max-h-[85vh] md:max-h-[80vh] bg-black rounded-lg overflow-hidden border border-app-border transition-all duration-300" style="aspect-ratio: 9/16;">
+                    <canvas id="editor-canvas" class="w-full h-full block"></canvas>
+
+                    <!-- Playback Controls & Timeline -->
+                    <div class="absolute bottom-4 left-4 right-4 flex items-center gap-3 bg-black/80 backdrop-blur rounded-lg px-4 py-2 border border-white/10 z-30">
+                        <button id="btn-play" class="text-white hover:text-primary-light shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                        <button id="btn-loop-toggle" class="text-gray-500 hover:text-primary-light shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>
+                        </button>
+
+                        <!-- Timeline -->
+                        <div class="flex-1 h-1.5 bg-gray-800 rounded-full relative overflow-hidden cursor-pointer group/timeline">
+                            <div id="playhead" class="absolute top-0 left-0 h-full bg-primary w-0 transition-[width] duration-75"></div>
+                        </div>
+                        <span id="time-display" class="text-[10px] font-mono text-gray-400 shrink-0 min-w-[60px] text-right">00:00 / 00:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. RIGHT PANEL: INSPECTOR -->
+        <div class="h-[45vh] md:h-full md:w-[400px] bg-app-surface border-t md:border-t-0 md:border-l border-app-border flex flex-col shrink-0 z-10 order-2 md:order-2 shadow-2xl md:shadow-none">
+            <!-- Tabs -->
+            <div class="flex border-b border-app-border" id="inspector-tabs">
+                <button class="flex-1 py-3 text-sm font-medium text-primary-light border-b-2 border-primary bg-app-surface" data-tab="create">Add</button>
+                <button class="flex-1 py-3 text-sm font-medium text-gray-400 hover:text-primary-subtle hover:bg-app-surface-hover transition-colors" data-tab="style">Style</button>
+                <button class="flex-1 py-3 text-sm font-medium text-gray-400 hover:text-primary-subtle hover:bg-app-surface-hover transition-colors" data-tab="animate">Animate</button>
+                <button class="flex-1 py-3 text-sm font-medium text-gray-400 hover:text-primary-subtle hover:bg-app-surface-hover transition-colors" data-tab="settings">Settings</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <!-- TAB: CREATE -->
+                <div id="tab-create" class="inspector-tab-content space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="add-title" class="p-4 bg-app-bg hover:bg-app-surface-hover rounded-xl border border-app-border hover:border-primary/50 transition-all group text-left">
+                            <span class="block text-2xl mb-2 text-gray-100">H1</span>
+                            <span class="text-sm text-gray-400 group-hover:text-primary-subtle">Big Title</span>
+                        </button>
+                        <button id="add-subtitle" class="p-4 bg-app-bg hover:bg-app-surface-hover rounded-xl border border-app-border hover:border-primary/50 transition-all group text-left">
+                            <span class="block text-xl mb-2 font-light text-gray-100">T</span>
+                            <span class="text-sm text-gray-400 group-hover:text-primary-subtle">Subtitle</span>
+                        </button>
+                        <button id="add-chart" class="p-4 bg-app-bg hover:bg-app-surface-hover rounded-xl border border-app-border hover:border-primary/50 transition-all group text-left">
+                            <span class="block text-2xl mb-2">📊</span>
+                            <span class="text-sm text-gray-400 group-hover:text-primary-subtle">Data Chart</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB: STYLE -->
+                <div id="tab-style" class="inspector-tab-content hidden space-y-4">
+                    <p class="text-center text-gray-500 text-sm italic" id="no-selection-msg">Select an object to style</p>
+                    <div id="inspector-container"></div>
+                </div>
+
+                <!-- TAB: ANIMATE -->
+                <div id="tab-animate" class="inspector-tab-content hidden space-y-6">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase text-gray-500 mb-2">VOX Presets</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="preset-btn p-3 bg-app-bg rounded-lg text-xs font-medium border border-app-border hover:border-accent hover:text-accent transition-colors" data-preset="highlight">📒 Highlight</button>
+                            <button class="preset-btn p-3 bg-app-bg rounded-lg text-xs font-medium border border-app-border hover:border-pink-400 hover:text-pink-400 transition-colors" data-preset="typewriter">⌨️ Typewriter</button>
+                            <button class="preset-btn p-3 bg-app-bg rounded-lg text-xs font-medium border border-app-border hover:border-green-400 hover:text-green-400 transition-colors" data-preset="fadeUp">⬆️ Fade Up</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold uppercase text-gray-500 mb-2">Font Library</h4>
+                        <select id="google-font-select" class="w-full bg-app-bg border border-app-border text-gray-200 text-sm rounded-lg p-2.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                            <optgroup label="Cinematic & Bold">
+                                <option value="Anton">Anton</option>
+                                <option value="Rubik Mono One">Rubik Mono One</option>
+                                <option value="Bebas Neue">Bebas Neue</option>
+                                <option value="Oswald">Oswald</option>
+                                <option value="Abril Fatface">Abril Fatface</option>
+                            </optgroup>
+                            <optgroup label="Cute & Fun">
+                                <option value="Fredoka">Fredoka</option>
+                                <option value="Pacifico">Pacifico</option>
+                                <option value="Quicksand">Quicksand</option>
+                                <option value="Bubblegum Sans">Bubblegum Sans</option>
+                                <option value="Chewy">Chewy</option>
+                            </optgroup>
+                            <optgroup label="Horror & Scary">
+                                <option value="Creepster">Creepster</option>
+                                <option value="Nosifer">Nosifer</option>
+                                <option value="Metal Mania">Metal Mania</option>
+                                <option value="Butcherman">Butcherman</option>
+                            </optgroup>
+                            <optgroup label="Handwritten">
+                                <option value="Permanent Marker">Permanent Marker</option>
+                                <option value="Caveat">Caveat</option>
+                                <option value="Indie Flower">Indie Flower</option>
+                                <option value="Shadows Into Light">Shadows Into Light</option>
+                            </optgroup>
+                            <optgroup label="Elegant & Serif">
+                                <option value="Playfair Display">Playfair Display</option>
+                                <option value="Cinzel">Cinzel</option>
+                                <option value="Merriweather">Merriweather</option>
+                                <option value="Lora">Lora</option>
+                            </optgroup>
+                            <optgroup label="Retro & Gaming">
+                                <option value="Press Start 2P">Press Start 2P</option>
+                                <option value="VT323">VT323</option>
+                                <option value="Orbitron">Orbitron</option>
+                            </optgroup>
+                            <optgroup label="Standards">
+                                <option value="Inter">Inter (Default)</option>
+                                <option value="Roboto">Roboto</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Lato">Lato</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- TAB: SETTINGS -->
+                <div id="tab-settings" class="inspector-tab-content hidden space-y-6">
+                    <!-- Aspect Ratio -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase">Aspect Ratio</label>
+                        <select id="setting-aspect-ratio" class="w-full bg-app-bg border border-app-border text-gray-200 text-sm rounded-lg p-2.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                            <option value="9:16">9:16 (Shorts - 1080x1920)</option>
+                            <option value="16:9">16:9 (YouTube - 1920x1080)</option>
+                            <option value="4:5">4:5 (Instagram - 1080x1350)</option>
+                            <option value="1:1">1:1 (Square - 1080x1080)</option>
+                        </select>
+                        <p class="text-[10px] text-gray-500 text-right" id="setting-resolution-display">1080 x 1920</p>
+                    </div>
+
+                    <!-- Duration -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase">Duration (Seconds)</label>
+                        <input type="number" id="setting-duration" value="5" min="1" max="60" step="0.5" class="w-full bg-app-bg border border-app-border text-gray-200 text-sm rounded-lg p-2.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none"/>
+                    </div>
+
+                    <!-- Background Color -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase">Canvas Background</label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" id="setting-bg-color" value="#000000" class="w-10 h-10 p-0 border-0 rounded bg-transparent cursor-pointer"/>
+                            <span class="text-xs text-gray-400">Click to change</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Console -->
+    <div id="debug-console" class="hidden fixed bottom-0 left-0 w-full h-32 bg-black/90 text-green-400 text-xs font-mono p-2 overflow-y-auto pointer-events-none z-50 border-t border-green-900 transition-opacity">
+        <div class="font-bold border-b border-green-800 mb-1 flex justify-between">
+            <span>Debug Console</span>
+            <span class="text-[10px] text-gray-500">Logs interactions</span>
+        </div>
+        <div id="debug-logs"></div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 w-96 shadow-2xl transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-white font-bold text-lg">Export Video</h3>
+                <button id="btn-export-close" class="text-gray-500 hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Format -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Format</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="format-btn active bg-blue-600 text-white border-blue-500 border rounded-lg p-3 text-sm font-medium transition-all" data-value="mp4">
+                            MP4 <span class="block text-[10px] opacity-75 font-normal">H.264 (Best)</span>
+                        </button>
+                        <button class="format-btn bg-gray-800 text-gray-400 border-gray-700 border rounded-lg p-3 text-sm font-medium hover:bg-gray-700 transition-all" data-value="webm">
+                            WebM <span class="block text-[10px] opacity-75 font-normal">Transparent</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="export-format" value="mp4" />
+                </div>
+
+                <!-- FPS -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Frame Rate</label>
+                    <select id="export-fps" class="w-full bg-black/50 text-gray-200 text-sm rounded-lg p-3 border border-gray-700 outline-none focus:border-blue-500 transition-colors">
+                        <option value="30">30 FPS (Standard)</option>
+                        <option value="60" selected>60 FPS (Smooth)</option>
+                    </select>
+                </div>
+
+                <!-- Action -->
+                <button id="btn-start-export" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 rounded-lg font-bold shadow-lg shadow-blue-900/20 transition-all flex justify-center items-center gap-2">
+                    <span>Start Export</span>
+                </button>
+
+                <!-- Progress -->
+                <div id="export-progress-container" class="hidden space-y-2 pt-2">
+                    <div class="flex justify-between text-xs text-gray-400">
+                        <span id="export-status">Rendering...</span>
+                        <span id="export-percent">0%</span>
+                    </div>
+                    <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div id="export-progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

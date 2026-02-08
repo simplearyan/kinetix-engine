@@ -27,7 +27,7 @@ export class VideoObject extends KinetixObject {
 
         // Error handling
         // Error handling
-        this.videoElement.addEventListener("error", (e) => {
+        this.videoElement.addEventListener("error", () => {
             console.error("Video Error:", this.videoElement.error);
             this.status = 'error';
         });
@@ -40,7 +40,7 @@ export class VideoObject extends KinetixObject {
     async load(): Promise<void> {
         if (this._loadPromise) return this._loadPromise;
 
-        this._loadPromise = new Promise((resolve, reject) => {
+        this._loadPromise = new Promise((resolve) => {
             if (this.videoElement.readyState >= 1) { // HAVE_METADATA
                 this.status = 'ready';
                 this.isLoaded = true;

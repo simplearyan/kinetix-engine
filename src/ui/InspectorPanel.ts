@@ -1,4 +1,4 @@
-import { Engine } from "../core/Engine";
+import { Engine } from "../core/Core";
 import { KinetixObject } from "../objects/Object";
 import { PropertySchema } from "../types/Interfaces";
 
