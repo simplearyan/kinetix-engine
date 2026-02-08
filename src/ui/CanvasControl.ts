@@ -7,6 +7,7 @@ export class CanvasControl {
     // Internal State
     private activeRatio: string = "16:9";
     private exportHeight: number = 1080;
+    private resizeMode: 'fit' | 'cover' | 'stretch' | 'center' = 'fit';
 
     constructor(engine: Engine, container: HTMLElement) {
         this.engine = engine;
@@ -32,6 +33,17 @@ export class CanvasControl {
                         <button data-ratio="21:9" class="p-2 rounded bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 border border-transparent transition-all">21:9</button>
                         <button data-ratio="custom" class="p-2 rounded bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 border border-transparent transition-all">Custom</button>
                     </div>
+                </div>
+
+                <!-- Resize Mode -->
+                <div>
+                     <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Resize Mode</h2>
+                     <select id="kp-resize-mode" class="w-full bg-[#1e1e1e] text-white text-sm rounded p-2 border border-gray-700 outline-none focus:border-blue-500 transition-colors">
+                        <option value="fit" selected>Fit (Contain)</option>
+                        <option value="cover">Cover (Fill)</option>
+                        <option value="stretch">Stretch</option>
+                        <option value="center">Center</option>
+                     </select>
                 </div>
 
                 <!-- Dimensions Input (Collapsible/Visible) -->
@@ -111,9 +123,21 @@ export class CanvasControl {
     bindEvents() {
         const widthInput = this.container.querySelector("#kp-canvas-width") as HTMLInputElement;
         const heightInput = this.container.querySelector("#kp-canvas-height") as HTMLInputElement;
+        const resizeModeSelect = this.container.querySelector("#kp-resize-mode") as HTMLSelectElement;
         const durationInput = this.container.querySelector("#kp-canvas-duration") as HTMLInputElement;
         const bgColorInput = this.container.querySelector("#kp-canvas-bgcolor") as HTMLInputElement;
         const bgColorText = this.container.querySelector("#kp-bgcolor-value") as HTMLElement;
+
+        // Resize Mode
+        if (resizeModeSelect) {
+            resizeModeSelect.addEventListener("change", (e) => {
+                this.resizeMode = (e.target as HTMLSelectElement).value as any;
+                // Optionally trigger a resize with current dims to re-apply logic?
+                // But logic depends on prev dims. Re-applying to same dims does nothing.
+                // User must change dims to see effect, OR we force a "refresh"?
+                // For now, just update state.
+            });
+        }
 
         // Aspect Ratio Grid
         const ratioBtns = this.container.querySelectorAll("#kp-ratio-grid button");
@@ -142,7 +166,7 @@ export class CanvasControl {
                     heightInput.value = h.toString();
 
                     // Update Engine
-                    this.engine.resize(w, h);
+                    this.engine.resize(w, h, this.resizeMode);
                 }
 
                 this.updateUI();
@@ -154,7 +178,7 @@ export class CanvasControl {
             this.activeRatio = "custom";
             const w = parseInt(widthInput.value) || 100;
             const h = parseInt(heightInput.value) || 100;
-            this.engine.resize(w, h);
+            this.engine.resize(w, h, this.resizeMode);
             this.updateUI();
         };
         widthInput.addEventListener("change", onDimChange);
@@ -192,7 +216,7 @@ export class CanvasControl {
         bgColorInput.addEventListener("input", (e) => updateBackground((e.target as HTMLInputElement).value));
 
         // Initial Defaults
-        this.engine.resize(1920, 1080);
+        this.engine.resize(1920, 1080, 'fit');
     }
 
     // Sync Listener: If ExportControl changes the resolution, update this UI

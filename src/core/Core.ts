@@ -108,8 +108,8 @@ export class Engine {
     }
 
     // Delegate to LayoutManager
-    resize(width: number, height: number) {
-        this.layout.resize(width, height);
+    resize(width: number, height: number, mode: 'fit' | 'cover' | 'stretch' | 'center' = 'fit') {
+        this.layout.resize(width, height, mode);
         this.store.width.set(width);
         this.store.height.set(height);
         this.invalidate();

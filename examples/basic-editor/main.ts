@@ -67,6 +67,7 @@ new CanvasControl(
     engine,
     document.getElementById("settings-container") as HTMLElement,
 );
+
 new ExportControl(
     engine,
     document.getElementById("export-container") as HTMLElement,

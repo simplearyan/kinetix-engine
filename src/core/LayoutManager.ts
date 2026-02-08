@@ -8,7 +8,7 @@ export class LayoutManager {
         this.engine = engine;
     }
 
-    resize(width: number, height: number) {
+    resize(width: number, height: number, mode: 'fit' | 'cover' | 'stretch' | 'center' = 'fit') {
         const scene = this.engine.scene;
         const canvas = this.engine.canvas;
         const prevW = scene.width;
@@ -24,21 +24,34 @@ export class LayoutManager {
             return;
         }
 
-        // const scaleX = width / prevW;
-        // const scaleY = height / prevH;
-        // Used only to calculate sizeScale if we wanted non-uniform scaling,
-        // but for now we rely on strict proportional fit.
-
         canvas.width = width;
         canvas.height = height;
         scene.width = width;
         scene.height = height;
 
-        // Center-Pin Scaling Strategy
-        // 1. Calculate Scale Factor based on "Fit" logic (safe default)
-        // If we want "Cover" for backgrounds, we'd need a specific flag, but for now strict proportional fit is best.
-        // We use the min scale to ensure object fits within new bounds without distortion.
-        const scaleFactor = Math.min(width / prevW, height / prevH);
+        let scaleX = 1;
+        let scaleY = 1;
+
+        switch (mode) {
+            case 'fit':
+                const scaleFit = Math.min(width / prevW, height / prevH);
+                scaleX = scaleFit;
+                scaleY = scaleFit;
+                break;
+            case 'cover':
+                const scaleCover = Math.max(width / prevW, height / prevH);
+                scaleX = scaleCover;
+                scaleY = scaleCover;
+                break;
+            case 'stretch':
+                scaleX = width / prevW;
+                scaleY = height / prevH;
+                break;
+            case 'center':
+                scaleX = 1;
+                scaleY = 1;
+                break;
+        }
 
         // Scale all objects
         scene.objects.forEach(obj => {
@@ -49,17 +62,20 @@ export class LayoutManager {
             const percentY = centerY / prevH;
 
             // 3. Scale Dimensions & Props
-            obj.width *= scaleFactor;
-            obj.height *= scaleFactor;
+            obj.width *= scaleX;
+            obj.height *= scaleY;
 
             const styleObj = obj as Styleable;
-            if (styleObj.fontSize) styleObj.fontSize *= scaleFactor;
-            if (styleObj.padding) styleObj.padding *= scaleFactor;
-            if (styleObj.lineNumberMargin) styleObj.lineNumberMargin *= scaleFactor;
-            if (styleObj.barHeight) styleObj.barHeight *= scaleFactor;
-            if (styleObj.gap) styleObj.gap *= scaleFactor;
-            if (styleObj.radius) styleObj.radius *= scaleFactor;
-            if (styleObj.strokeWidth) styleObj.strokeWidth *= scaleFactor;
+            // For font/padding, use average scale if non-uniform, or just Y for vertical text fit
+            const avgScale = (scaleX + scaleY) / 2;
+
+            if (styleObj.fontSize) styleObj.fontSize *= avgScale;
+            if (styleObj.padding) styleObj.padding *= avgScale;
+            if (styleObj.lineNumberMargin) styleObj.lineNumberMargin *= avgScale;
+            if (styleObj.barHeight) styleObj.barHeight *= avgScale;
+            if (styleObj.gap) styleObj.gap *= avgScale;
+            if (styleObj.radius) styleObj.radius *= avgScale;
+            if (styleObj.strokeWidth) styleObj.strokeWidth *= avgScale;
 
             // 4. Reposition based on new Canvas Center
             // New Center = Percentage * New Dimensions
@@ -75,3 +91,4 @@ export class LayoutManager {
         this.engine.onResize?.(width, height);
     }
 }
+
